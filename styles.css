@@ -124,6 +124,45 @@ body {
   place-items: center;
 }
 
+.touchControls {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.touchControlsBottom {
+  justify-content: space-between;
+}
+
+.touchMiddle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.touchBtn {
+  min-width: 56px;
+  padding-inline: 10px;
+  padding-block: 8px;
+  font-size: 16px;
+}
+
+.touchBtn.wide {
+  flex: 1;
+  min-width: 140px;
+}
+
+@media (pointer: fine) and (min-width: 900px) {
+  /* Sur grand écran avec souris, les contrôles tactiles peuvent être moins utiles */
+  .touchControls {
+    margin-top: 6px;
+    opacity: 0.9;
+  }
+}
+
 canvas#game {
   width: min(360px, 100%);
   height: auto;

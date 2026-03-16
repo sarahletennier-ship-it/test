@@ -706,7 +706,7 @@ function restartGame() {
 // 9) Gestion des événements
 // ---------------------------
 
-// Boutons
+// Boutons Start / Restart
 startBtn.addEventListener("click", () => {
   startBtn.disabled = true;
   restartBtn.disabled = false;
@@ -722,6 +722,35 @@ overlayRestart.addEventListener("click", () => {
   startBtn.disabled = true;
   restartGame();
 });
+
+// Boutons tactiles (écran tactile / mobile)
+const touchLeft = document.getElementById("touchLeft");
+const touchRight = document.getElementById("touchRight");
+const touchDown = document.getElementById("touchDown");
+const touchRotate = document.getElementById("touchRotate");
+const touchDrop = document.getElementById("touchDrop");
+const touchPause = document.getElementById("touchPause");
+
+function wireTapOrClick(el, handler) {
+  if (!el) return;
+  // Pour les mobiles: on réagit dès touchstart pour plus de réactivité.
+  el.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    handler();
+  });
+  // Pour les tablettes / hybrides: on garde aussi le clic classique.
+  el.addEventListener("click", (e) => {
+    e.preventDefault();
+    handler();
+  });
+}
+
+wireTapOrClick(touchLeft, () => move(-1));
+wireTapOrClick(touchRight, () => move(1));
+wireTapOrClick(touchDown, () => softDrop());
+wireTapOrClick(touchRotate, () => rotate());
+wireTapOrClick(touchDrop, () => hardDrop());
+wireTapOrClick(touchPause, () => togglePause());
 
 // Clavier
 document.addEventListener("keydown", (e) => {
