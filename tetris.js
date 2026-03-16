@@ -46,7 +46,7 @@ const overlayTitle = document.getElementById("overlayTitle");
 const overlayText = document.getElementById("overlayText");
 const overlayRestart = document.getElementById("overlayRestart");
 
-// Couleurs (une couleur différente par pièce)
+// Couleurs (palette)
 const COLORS = {
   I: "#34d399",
   O: "#fbbf24",
@@ -58,6 +58,12 @@ const COLORS = {
   // 2 formes bonus (pièces "extra" — non classiques)
   U: "#f472b6",
   P: "#22c55e",
+  RAINBOW_1: "#60a5fa",
+  RAINBOW_2: "#34d399",
+  RAINBOW_3: "#fbbf24",
+  RAINBOW_4: "#f472b6",
+  RAINBOW_5: "#f87171",
+  RAINBOW_6: "#a78bfa",
   GHOST: "rgba(255,255,255,0.22)", // silhouette d'atterrissage (aide visuelle)
 };
 
@@ -115,6 +121,34 @@ const SHAPES = {
 
 const PIECE_TYPES = Object.keys(SHAPES);
 
+/**
+ * Pièces multicolores
+ * ------------------
+ * Par défaut, une pièce a une seule couleur.
+ * Si on veut des pièces multicolores, on crée une matrice de couleurs
+ * de la même taille que la matrice de forme.
+ *
+ * Convention:
+ * - colors[y][x] = une couleur CSS ("#RRGGBB") pour les cellules où matrix[y][x] == 1
+ * - pour matrix[y][x] == 0, la valeur est ignorée (on peut mettre null)
+ */
+function makeSolidColorMatrix(matrix, color) {
+  return matrix.map((row) => row.map((v) => (v ? color : null)));
+}
+
+// Ici on choisit volontairement de rendre certaines pièces "multicolores" (ex: I et T).
+// Tu peux en ajouter d'autres en suivant le même modèle.
+const PIECE_COLORS = {
+  // Barre "I" arc-en-ciel
+  I: [[COLORS.RAINBOW_1, COLORS.RAINBOW_2, COLORS.RAINBOW_3, COLORS.RAINBOW_4]],
+
+  // "T" avec un centre violet et des bras de couleurs différentes
+  T: [
+    [null, COLORS.RAINBOW_6, null],
+    [COLORS.RAINBOW_2, COLORS.T, COLORS.RAINBOW_5],
+  ],
+};
+
 // Score de lignes (style Tetris, mais simplifié)
 // 1 ligne = 100 * level, 2 = 300, 3 = 500, 4 = 800
 const LINE_SCORES = [0, 100, 300, 500, 800];
@@ -142,7 +176,7 @@ const BEST_KEY = "tetris_best_score_session";
  * La grille est un tableau 2D de taille ROWS x COLS.
  * Chaque cellule contient:
  * - null -> vide
- * - une string ("I", "O", etc.) -> la couleur dépend du type
+ * - une couleur CSS ("#...") -> on stocke la couleur du bloc verrouillé
  */
 let grid = createEmptyGrid();
 
@@ -150,6 +184,7 @@ let grid = createEmptyGrid();
  * La pièce courante a:
  * - type: "T", "I", ...
  * - matrix: matrice 2D de la forme
+ * - colors: matrice 2D de couleurs (même taille que matrix)
  * - x, y: position du coin haut-gauche de la matrice dans la grille
  */
 let current = null;
@@ -233,14 +268,16 @@ function collides(testMatrix, px, py) {
  * Quand la pièce ne peut plus descendre, on la "copie" dans la grille.
  */
 function mergeCurrentIntoGrid() {
-  const { type, matrix, x: px, y: py } = current;
+  const { matrix, colors, x: px, y: py } = current;
   for (let y = 0; y < matrix.length; y++) {
     for (let x = 0; x < matrix[y].length; x++) {
       if (!matrix[y][x]) continue;
       const gx = px + x;
       const gy = py + y;
       if (gy >= 0 && gy < ROWS && gx >= 0 && gx < COLS) {
-        grid[gy][gx] = type;
+        // On stocke directement la couleur du bloc verrouillé dans la grille.
+        // Ainsi, une pièce multicolore reste multicolore même après avoir "atterri".
+        grid[gy][gx] = colors?.[y]?.[x] || "#ffffff";
       }
     }
   }
@@ -295,13 +332,19 @@ function randomPieceType() {
 
 function makePiece(type) {
   const matrix = cloneMatrix(SHAPES[type]);
+  // Couleurs de la pièce:
+  // - si PIECE_COLORS[type] existe -> pièce multicolore
+  // - sinon -> une seule couleur (COLORS[type])
+  const colors = PIECE_COLORS[type]
+    ? cloneMatrix(PIECE_COLORS[type])
+    : makeSolidColorMatrix(matrix, COLORS[type] || "#ffffff");
 
   // Position de spawn: centré en haut
   const w = matrix[0].length;
   const x = Math.floor((COLS - w) / 2);
   const y = -1; // légèrement au-dessus de la grille (spawn plus naturel)
 
-  return { type, matrix, x, y };
+  return { type, matrix, colors, x, y };
 }
 
 function spawnNextPiece() {
@@ -525,24 +568,25 @@ function drawLockedBlocks(time) {
   const flashing = time < flashUntil;
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
-      const t = grid[y][x];
-      if (!t) continue;
+      const color = grid[y][x];
+      if (!color) continue;
       const isFlashRow = flashing && flashRows.includes(y);
       const alpha = isFlashRow ? 0.35 : 1;
-      drawCell(gameCtx, x, y, COLORS[t], alpha);
+      drawCell(gameCtx, x, y, color, alpha);
     }
   }
 }
 
-function drawPiece(piece, color, alpha = 1) {
-  const { matrix, x: px, y: py } = piece;
+function drawPiece(piece, fallbackColor, alpha = 1) {
+  const { matrix, colors, x: px, y: py } = piece;
   for (let y = 0; y < matrix.length; y++) {
     for (let x = 0; x < matrix[y].length; x++) {
       if (!matrix[y][x]) continue;
       const gx = px + x;
       const gy = py + y;
       if (gy < 0) continue; // partie au-dessus du canvas
-      drawCell(gameCtx, gx, gy, color, alpha);
+      const c = colors?.[y]?.[x] || fallbackColor;
+      drawCell(gameCtx, gx, gy, c, alpha);
     }
   }
 }
@@ -567,7 +611,8 @@ function drawNextPiece() {
   for (let y = 0; y < mh; y++) {
     for (let x = 0; x < mw; x++) {
       if (!m[y][x]) continue;
-      nextCtx.fillStyle = COLORS[next.type];
+      const c = next.colors?.[y]?.[x] || COLORS[next.type] || "#ffffff";
+      nextCtx.fillStyle = c;
       nextCtx.fillRect(startX + x * cell + 1, startY + y * cell + 1, cell - 2, cell - 2);
       nextCtx.strokeStyle = "rgba(255,255,255,0.18)";
       nextCtx.lineWidth = 2;
@@ -587,7 +632,7 @@ function draw(time) {
     drawPiece(ghost, COLORS.GHOST, 1);
 
     // Pièce courante
-    drawPiece(current, COLORS[current.type], 1);
+    drawPiece(current, COLORS[current.type] || "#ffffff", 1);
   }
 
   if (next) drawNextPiece();
