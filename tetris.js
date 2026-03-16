@@ -46,7 +46,7 @@ const overlayTitle = document.getElementById("overlayTitle");
 const overlayText = document.getElementById("overlayText");
 const overlayRestart = document.getElementById("overlayRestart");
 
-// Couleurs (une couleur différente par tétrimino)
+// Couleurs (une couleur différente par pièce)
 const COLORS = {
   I: "#34d399",
   O: "#fbbf24",
@@ -55,13 +55,16 @@ const COLORS = {
   Z: "#f87171",
   J: "#38bdf8",
   L: "#fb923c",
+  // 2 formes bonus (pièces "extra" — non classiques)
+  U: "#f472b6",
+  P: "#22c55e",
   GHOST: "rgba(255,255,255,0.22)", // silhouette d'atterrissage (aide visuelle)
 };
 
 /**
  * Représentation des pièces
  * ------------------------
- * On stocke chaque tétrimino comme une matrice (tableau 2D) de 0/1.
+ * On stocke chaque pièce comme une matrice (tableau 2D) de 0/1.
  * 1 = une cellule occupée par la pièce, 0 = vide.
  *
  * Exemple: O (carré) est une matrice 2x2 de 1.
@@ -91,6 +94,22 @@ const SHAPES = {
   L: [
     [0, 0, 1],
     [1, 1, 1],
+  ],
+  /**
+   * BONUS: 2 nouvelles formes (pas dans le Tetris classique)
+   * -------------------------------------------------------
+   * Ici on ajoute volontairement 2 pièces plus "originales" pour varier le gameplay.
+   * Ce sont des pentominos (5 blocs) : notre moteur (collision/rotation/lignes)
+   * fonctionne aussi avec des pièces de taille différente.
+   */
+  U: [
+    [1, 0, 1],
+    [1, 1, 1],
+  ],
+  P: [
+    [1, 1],
+    [1, 1],
+    [1, 0],
   ],
 };
 
